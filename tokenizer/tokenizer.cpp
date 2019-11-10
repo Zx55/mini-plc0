@@ -2,8 +2,17 @@
 
 #include <cctype>
 #include <sstream>
+#include <unordered_map>
 
 namespace miniplc0 {
+
+    auto _reserved = std::unordered_map<std::string, TokenType>({
+        { "begin", TokenType::BEGIN },
+        { "end", TokenType::END },
+        { "const", TokenType::CONST },
+        { "var", TokenType::VAR },
+        { "print", TokenType::PRINT },
+    });
 
 	std::pair<std::optional<Token>, std::optional<CompilationError>> Tokenizer::NextToken() {
 		if (!_initialized)
@@ -63,7 +72,7 @@ namespace miniplc0 {
 				// 已经读到了文件尾
 				if (!current_char.has_value())
 					// 返回一个空的token，和编译错误ErrEOF：遇到了文件尾
-					return std::make_pair(std::optional<Token>(), std::make_optional<CompilationError>(0, 0, ErrEOF));
+					return { {}, CompilationError(0, 0, ErrEOF) };
 
 				// 获取读到的字符的值，注意auto推导出的类型是char
 				auto ch = current_char.value();
@@ -129,7 +138,7 @@ namespace miniplc0 {
 					// 回退这个字符
 					unreadLast();
 					// 返回编译错误：非法的输入
-					return std::make_pair(std::optional<Token>(), std::make_optional<CompilationError>(pos, ErrorCode::ErrInvalidInput));
+					return { {}, CompilationError(pos, ErrorCode::ErrInvalidInput) };
 				}
 				// 如果读到的字符导致了状态的转移，说明它是一个token的第一个字符
 				if (current_state != DFAState::INITIAL_STATE) // ignore white spaces
@@ -149,7 +158,7 @@ namespace miniplc0 {
 
                 // 按照缓存区的设计 是遇不到EOF的 遇到就报错
                 if (!current_char.has_value()) {
-                    return std::make_pair(std::optional<Token>(), std::make_optional<CompilationError>(pos, ErrEOF));
+                    return { {}, CompilationError(pos, ErrEOF) };
                 }
 
                 auto ch = current_char.value();
@@ -161,12 +170,15 @@ namespace miniplc0 {
                 } else {
                     auto token_str = ss.str();
                     ss.str("");
+                    unreadLast();
 
-
+                    return { Token(TokenType::UNSIGNED_INTEGER, token_str, pos, pos = previousPos()), {} };
                 }
 
 				break;
 			}
+
+			// 当前状态是标识符
 			case IDENTIFIER_STATE: {
 				// 请填空：
 				// 如果当前已经读到了文件尾，则解析已经读到的字符串
@@ -174,32 +186,55 @@ namespace miniplc0 {
 				// 如果读到的是字符或字母，则存储读到的字符
 				// 如果读到的字符不是上述情况之一，则回退读到的字符，并解析已经读到的字符串
 				//     如果解析结果是关键字，那么返回对应关键字的token，否则返回标识符的token
+
+				// 同理如上，遇到EOF报错
+				if (!current_char.has_value()) {
+				    return { {}, CompilationError(pos, ErrEOF) };
+				}
+
+				auto ch = current_char.value();
+                if (isdigit(ch) || isalpha(ch)) {
+                    ss << ch;
+                } else {
+                    auto token_str = ss.str();
+                    ss.str("");
+                    unreadLast();
+
+                    auto it = _reserved.find(token_str);
+                    if (it != _reserved.end()) {
+                        return { Token(it->second, token_str, pos, pos = previousPos()), {} };
+                    } else {
+                        return { Token(TokenType::IDENTIFIER, token_str, pos, pos = previousPos()), {} };
+                    }
+                }
+
 				break;
 			}
 
-								   // 如果当前状态是加号
+			// 如果当前状态是加号
 			case PLUS_SIGN_STATE: {
 				// 请思考这里为什么要回退，在其他地方会不会需要
 				unreadLast(); // Yes, we unread last char even if it's an EOF.
-				return std::make_pair(std::make_optional<Token>(TokenType::PLUS_SIGN, '+', pos, currentPos()), std::optional<CompilationError>());
+				return { Token(TokenType::PLUS_SIGN, '+', pos, currentPos()), {} };
 			}
-								  // 当前状态为减号的状态
+
+			// 当前状态为减号的状态
 			case MINUS_SIGN_STATE: {
 				// 请填空：回退，并返回减号token
 			}
 
-								   // 请填空：
-								   // 对于其他的合法状态，进行合适的操作
-								   // 比如进行解析、返回token、返回编译错误
+			// 请填空：
+			// 对于其他的合法状态，进行合适的操作
+			// 比如进行解析、返回token、返回编译错误
 
-								   // 预料之外的状态，如果执行到了这里，说明程序异常
+			// 预料之外的状态，如果执行到了这里，说明程序异常
 			default:
 				DieAndPrint("unhandled state.");
 				break;
 			}
 		}
 		// 预料之外的状态，如果执行到了这里，说明程序异常
-		return std::make_pair(std::optional<Token>(), std::optional<CompilationError>());
+		return { {}, {} };
 	}
 
 	std::optional<CompilationError> Tokenizer::checkToken(const Token& t) {
