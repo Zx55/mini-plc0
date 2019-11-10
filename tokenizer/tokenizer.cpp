@@ -57,8 +57,8 @@ namespace miniplc0 {
 			// 针对当前的状态进行不同的操作
 			switch (current_state) {
 
-				// 初始状态
-				// 这个 case 我们给出了核心逻辑，但是后面的 case 不用照搬。
+			// 初始状态
+			// 这个 case 我们给出了核心逻辑，但是后面的 case 不用照搬
 			case INITIAL_STATE: {
 				// 已经读到了文件尾
 				if (!current_char.has_value())
@@ -87,16 +87,33 @@ namespace miniplc0 {
 						break;
 					case '-':
 						// 请填空：切换到减号的状态
+                        current_state = DFAState::MINUS_SIGN_STATE;
+                        break;
 					case '+':
 						// 请填空：切换到加号的状态
+                        current_state = DFAState::PLUS_SIGN_STATE;
+                        break;
 					case '*':
 						// 请填空：切换状态
+                        current_state = DFAState::MULTIPLICATION_SIGN_STATE;
+                        break;
 					case '/':
 						// 请填空：切换状态
+                        current_state = DFAState::DIVISION_SIGN_STATE;
+                        break;
 
 					///// 请填空：
 					///// 对于其他的可接受字符
 					///// 切换到对应的状态
+                    case ';':
+                        current_state = DFAState::SEMICOLON_STATE;
+                        break;
+                    case '(':
+                        current_state = DFAState::LEFTBRACKET_STATE;
+                        break;
+                    case ')':
+                        current_state = DFAState::RIGHTBRACKET_STATE;
+                        break;
 
 					// 不接受的字符导致的不合法的状态
 					default:
@@ -120,7 +137,7 @@ namespace miniplc0 {
 				break;
 			}
 
-								// 当前状态是无符号整数
+            // 当前状态是无符号整数
 			case UNSIGNED_INTEGER_STATE: {
 				// 请填空：
 				// 如果当前已经读到了文件尾，则解析已经读到的字符串为整数
@@ -129,6 +146,25 @@ namespace miniplc0 {
 				// 如果读到的是字母，则存储读到的字符，并切换状态到标识符
 				// 如果读到的字符不是上述情况之一，则回退读到的字符，并解析已经读到的字符串为整数
 				//     解析成功则返回无符号整数类型的token，否则返回编译错误
+
+                // 按照缓存区的设计 是遇不到EOF的 遇到就报错
+                if (!current_char.has_value()) {
+                    return std::make_pair(std::optional<Token>(), std::make_optional<CompilationError>(pos, ErrEOF));
+                }
+
+                auto ch = current_char.value();
+                if (isdigit(ch)) {
+                    ss << ch;
+                } else if (isalpha(ch)) {
+                    ss << ch;
+                    current_state = DFAState::IDENTIFIER_STATE;
+                } else {
+                    auto token_str = ss.str();
+                    ss.str("");
+
+
+                }
+
 				break;
 			}
 			case IDENTIFIER_STATE: {

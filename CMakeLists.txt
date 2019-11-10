@@ -8,6 +8,8 @@ add_subdirectory(3rd_party/fmt)
 set(PROJECT_EXE ${PROJECT_NAME})
 set(PROJECT_LIB "${PROJECT_NAME}_lib")
 
+SET(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -Wall -g2 -ggdb")
+
 set(lib_src
 	tokenizer/token.h
 	tokenizer/tokenizer.h
@@ -76,12 +78,12 @@ if (MSVC AND OPEN_CPP_COVERAGE)
 	string(REPLACE "/" "\\" MY_SOURCE_DIR "${CMAKE_SOURCE_DIR}")
 	add_custom_command(TARGET miniplc0_test
 					   POST_BUILD
-					   COMMAND ${OPEN_CPP_COVERAGE} 
-					            --sources ${MY_SOURCE_DIR} 
+					   COMMAND ${OPEN_CPP_COVERAGE}
+					            --sources ${MY_SOURCE_DIR}
 								--excluded_sources ${MY_SOURCE_DIR}\\3rd_party
 								"$<TARGET_FILE:miniplc0_test>")
 else()
-	
+
 endif()
 
 set_target_properties(miniplc0_test PROPERTIES
