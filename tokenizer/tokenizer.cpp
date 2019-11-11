@@ -51,6 +51,7 @@ namespace miniplc0 {
 		// 分析token的结果，作为此函数的返回值
 		std::pair<std::optional<Token>, std::optional<CompilationError>> result;
 		// <行号，列号>，表示当前token的第一个字符在源代码中的位置
+		// 规定一个token的位置为 [start_pos, end_pos)
 		std::pair<int64_t, int64_t> pos;
 		// 记录当前自动机的状态，进入此函数时是初始状态
 		DFAState current_state = DFAState::INITIAL_STATE;
@@ -172,7 +173,7 @@ namespace miniplc0 {
                     ss.str("");
                     unreadLast();
 
-                    return { Token(TokenType::UNSIGNED_INTEGER, token_str, pos, pos = previousPos()), {} };
+                    return { Token(TokenType::UNSIGNED_INTEGER, token_str, pos, currentPos()), {} };
                 }
 
 				break;
@@ -202,9 +203,11 @@ namespace miniplc0 {
 
                     auto it = _reserved.find(token_str);
                     if (it != _reserved.end()) {
-                        return { Token(it->second, token_str, pos, pos = previousPos()), {} };
+                        // 保留字 或 关键字
+                        return { Token(it->second, token_str, pos, currentPos()), {} };
                     } else {
-                        return { Token(TokenType::IDENTIFIER, token_str, pos, pos = previousPos()), {} };
+                        // 标识符
+                        return { Token(TokenType::IDENTIFIER, token_str, pos, currentPos()), {} };
                     }
                 }
 
@@ -214,6 +217,8 @@ namespace miniplc0 {
 			// 如果当前状态是加号
 			case PLUS_SIGN_STATE: {
 				// 请思考这里为什么要回退，在其他地方会不会需要
+				//      这里回退的原因是+只需要读一位 并且在INITIAL_STATE中完成了
+				//      循环再一次进入平匹配这个case时多读了后面一个字符，因此要把这个字符回退
 				unreadLast(); // Yes, we unread last char even if it's an EOF.
 				return { Token(TokenType::PLUS_SIGN, '+', pos, currentPos()), {} };
 			}
@@ -221,11 +226,42 @@ namespace miniplc0 {
 			// 当前状态为减号的状态
 			case MINUS_SIGN_STATE: {
 				// 请填空：回退，并返回减号token
+				unreadLast();
+				return { Token(TokenType::MINUS_SIGN, '-', pos, currentPos()), {} };
 			}
 
 			// 请填空：
 			// 对于其他的合法状态，进行合适的操作
 			// 比如进行解析、返回token、返回编译错误
+			case MULTIPLICATION_SIGN_STATE: {
+                unreadLast();
+                return { Token(TokenType::MULTIPLICATION_SIGN, '*', pos, currentPos()), {} };
+			}
+
+			case DIVISION_SIGN_STATE: {
+                unreadLast();
+                return { Token(TokenType::DIVISION_SIGN, '/', pos, currentPos()), {} };
+			}
+
+			case EQUAL_SIGN_STATE: {
+                unreadLast();
+                return { Token(TokenType::EQUAL_SIGN, '=', pos, currentPos()), {} };
+			}
+
+			case SEMICOLON_STATE: {
+                unreadLast();
+                return { Token(TokenType::SEMICOLON, ';', pos, currentPos()), {} };
+			}
+
+			case LEFTBRACKET_STATE: {
+                unreadLast();
+                return { Token(TokenType::LEFT_BRACKET, '(', pos, currentPos()), {} };
+			}
+
+			case RIGHTBRACKET_STATE: {
+                unreadLast();
+                return { Token(TokenType::RIGHT_BRACKET, ')', pos, currentPos()), {} };
+			}
 
 			// 预料之外的状态，如果执行到了这里，说明程序异常
 			default:
