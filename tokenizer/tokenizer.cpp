@@ -173,6 +173,7 @@ namespace miniplc0 {
                     ss.str("");
                     unreadLast();
 
+                    // FIXME: 处理溢出错误
                     return { Token(TokenType::UNSIGNED_INTEGER, token_str, pos, currentPos()), {} };
                 }
 

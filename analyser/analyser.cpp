@@ -38,10 +38,20 @@ namespace miniplc0 {
 		// 完全可以参照 <程序> 编写
 
 		// <常量声明>
+		if (auto err = analyseConstantDeclaration(); err.has_value()) {
+		    return err;
+		}
 
 		// <变量声明>
+		if (auto err = analyseVariableDeclaration(); err.has_value()) {
+		    return err;
+		}
 
 		// <语句序列>
+		if (auto err = analyseStatementSequence(); err.has_value()) {
+		    return err;
+		}
+
 		return {};
 	}
 
@@ -96,20 +106,55 @@ namespace miniplc0 {
 	// 需要补全
 	std::optional<CompilationError> Analyser::analyseVariableDeclaration() {
 		// 变量声明语句可能有一个或者多个
+        while (true) {
+            // 预读
+            auto next = nextToken();
+            if (!next.has_value()) {
+                return {};
+            }
 
-		// 预读？
+            // var
+            if (next.value().GetType() != TokenType::VAR) {
+                unreadToken();
+                return {};
+            }
 
-		// 'var'
+            // <标识符>
+            next = nextToken();
+            if (!next.has_value() || next.value().GetType() != TokenType::IDENTIFIER) {
+                return CompilationError(_current_pos, ErrorCode::ErrNeedIdentifier);
+            } else if (isDeclared(next.value().GetValueString())) {
+                return CompilationError(_current_pos, ErrorCode::ErrDuplicateDeclaration);
+            }
+            auto token = next.value();
 
-		// <标识符>
+            next = nextToken();
+            // [ '=' ]
+            if (next.has_value()) {
+                if (next.value().GetType() == TokenType::EQUAL_SIGN) {
+                    // 考虑初始化
+                    // [ '<表达式>' ]
+                    // TODO: 暂时相信这边analyseExpression() 已经将最终的值val 放在栈上了 (该初始化的变量在符号表里应该正确指到栈上的val
+                    if (auto err = analyseExpression(); err.has_value()) {
+                        return err;
+                    }
 
-		// 变量可能没有初始化，仍然需要一次预读
+                    addVariable(token);
+                } else {
+                    // 仅仅声明变量
+                    unreadToken();
 
-		// '='
+                    // TODO: 要处理这个未初始化的变量在栈上的位置之后被使用
+                    addUninitializedVariable(token);
+                }
+            }
 
-		// '<表达式>'
-
-		// ';'
+            // ;
+            next = nextToken();
+            if (!next.has_value() || next.value().GetType() != TokenType::SEMICOLON) {
+                return CompilationError(_current_pos, ErrorCode::ErrNoSemicolon);
+            }
+        }
 		return {};
 	}
 
@@ -279,6 +324,7 @@ namespace miniplc0 {
 	void Analyser::unreadToken() {
 		if (_offset == 0)
 			DieAndPrint("analyser unreads token from the begining.");
+		// FIXME: 为了保持一致，应该是_offset-2的endPos
 		_current_pos = _tokens[_offset - 1].GetEndPos();
 		_offset--;
 	}
