@@ -173,8 +173,17 @@ namespace miniplc0 {
                     ss.str("");
                     unreadLast();
 
-                    // FIXME: 处理溢出错误
-                    return { Token(TokenType::UNSIGNED_INTEGER, token_str, pos, currentPos()), {} };
+                    try {
+                        int32_t token_value = std::stoi(token_str);
+                        if (token_value >= 0) {
+                            return { Token(TokenType::UNSIGNED_INTEGER, token_value, pos, currentPos()), {} };
+                        } else {
+                            // 这边应该是不会解析出负数的 保险起见加一个判断
+                            return { {}, CompilationError(pos, ErrorCode::ErrIntegerOverflow) };
+                        }
+                    } catch (const std::out_of_range&) {
+                        return { {}, CompilationError(pos, ErrorCode::ErrIntegerOverflow) };
+                    }
                 }
 
 				break;
