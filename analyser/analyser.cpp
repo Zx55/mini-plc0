@@ -134,18 +134,15 @@ namespace miniplc0 {
                 if (next.value().GetType() == TokenType::EQUAL_SIGN) {
                     // 考虑初始化
                     // [ '<表达式>' ]
-                    // TODO: 暂时相信这边analyseExpression() 已经将最终的值val 放在栈上了 (该初始化的变量在符号表里应该正确指到栈上的val
                     if (auto err = analyseExpression(); err.has_value()) {
                         return err;
                     }
-
                     addVariable(token);
                 } else {
                     // 仅仅声明变量
                     unreadToken();
-
-                    // TODO: 要处理这个未初始化的变量在栈上的位置之后被使用 (先查未初始化表，找出栈上的位置，然后赋值
                     addUninitializedVariable(token);
+                    _instructions.emplace_back(Operation::LIT, 0);
                 }
             }
 
@@ -229,12 +226,12 @@ namespace miniplc0 {
                 }
 
                 try {
-                    if (val = -1 * static_cast<std::int64_t>(std::any_cast<std::int32_t>(next.value().GetValue()));
-                        val > static_cast<std::int64_t>(INT32_MAX) || val < static_cast<std::int64_t>(INT32_MIN)) {
+                    if (val = -1 * static_cast<int64_t>(std::any_cast<int32_t>(next.value().GetValue()));
+                        val > static_cast<int64_t>(INT32_MAX) || val < static_cast<int64_t>(INT32_MIN)) {
                         return CompilationError(_current_pos, ErrorCode::ErrIntegerOverflow);
                     }
 
-                    out = static_cast<std::int32_t>(val);
+                    out = static_cast<int32_t>(val);
                     return {};
                 } catch (const std::bad_any_cast &) {
                     return CompilationError(_current_pos, ErrorCode::ErrInvalidInput);
@@ -305,7 +302,7 @@ namespace miniplc0 {
 
 	    if (isConstant(id_str)) {
 	        return CompilationError(_current_pos, ErrorCode::ErrAssignToConstant);
-	    } else if (!isInitializedVariable(id_str) || !isUninitializedVariable(id_str)) {
+	    } else if (!isInitializedVariable(id_str) && !isUninitializedVariable(id_str)) {
 	        return CompilationError(_current_pos, ErrorCode::ErrInvalidIdentifier);
 	    }
 
@@ -322,6 +319,10 @@ namespace miniplc0 {
 	        return err;
 	    }
 	    _instructions.emplace_back(Operation::STO, id_index);
+	    if (isUninitializedVariable(id_str)) {
+	        _uninitialized_vars.erase(id_str);
+	        _vars[id_str] = id_index;
+	    }
 
 	    // ';'
 	    next = nextToken();
@@ -366,7 +367,7 @@ namespace miniplc0 {
 	// 需要补全
 	std::optional<CompilationError> Analyser::analyseItem() {
         // <项>
-	    if (auto err = analyseItem(); err.has_value()) {
+	    if (auto err = analyseFactor(); err.has_value()) {
             return err;
         }
 
@@ -424,9 +425,24 @@ namespace miniplc0 {
 			// 但是要注意 default 返回的是一个编译错误
 		    case TokenType::IDENTIFIER: {
 		        // TODO: 补全
+		        auto id_str = next.value().GetValueString();
+
+		        if (!isDeclared(id_str)) {
+		            return CompilationError(_current_pos, ErrorCode::ErrNotDeclared);
+		        }
+
+		        if (isUninitializedVariable(id_str)) {
+		            return CompilationError(_current_pos, ErrorCode::ErrNotInitialized);
+		        }
+
+		        auto id_index = getIndex(id_str);
+		        _instructions.emplace_back(Operation::LOD, id_index);
+
 		        break;
 		    }
 		    case TokenType::UNSIGNED_INTEGER: {
+                auto val = std::any_cast<int32_t>(next.value().GetValue());
+                _instructions.emplace_back(Operation::LIT, val);
 
 		        break;
 		    }
@@ -463,7 +479,7 @@ namespace miniplc0 {
 
 	void Analyser::unreadToken() {
 		if (_offset == 0)
-			DieAndPrint("analyser unreads token from the begining.");
+			DieAndPrint("analyser unreads token from the beginning.");
 		_current_pos = _tokens[_offset - 1].GetEndPos();
 		_offset--;
 	}
