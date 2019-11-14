@@ -11,3 +11,4 @@ out
 toolchain
 !toolchain/linux-amd64
 !toolchain/win-amd64
+!toolchain/test_env.sh
