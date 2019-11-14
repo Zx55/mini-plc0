@@ -7,3 +7,5 @@ build
 cmake-build-debug
 test_io/out
 test_io
+out
+*.epf
