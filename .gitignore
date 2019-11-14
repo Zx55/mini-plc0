@@ -5,4 +5,5 @@ CMakeSettings.json
 !CMakeLists.txt
 build
 cmake-build-debug
-out
+test_io/out
+test_io

@@ -35,10 +35,10 @@ namespace miniplc0 {
 		while (true) {
 			auto p = NextToken();
 			if (p.second.has_value()) {
-				if (p.second.value().GetCode() == ErrorCode::ErrEOF)
-					return std::make_pair(result, std::optional<CompilationError>());
-				else
-					return std::make_pair(std::vector<Token>(), p.second);
+				if (p.second.value().GetCode() == ErrorCode::ErrEOF) 
+                    return std::make_pair(result, std::optional<CompilationError>());
+				else 
+                    return std::make_pair(std::vector<Token>(), p.second);
 			}
 			result.emplace_back(p.first.value());
 		}
