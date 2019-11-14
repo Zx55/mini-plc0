@@ -5,7 +5,9 @@ CMakeSettings.json
 !CMakeLists.txt
 build
 cmake-build-debug
-test_io/out
 test_io
 out
 *.epf
+toolchain
+!toolchain/linux-amd64
+!toolchain/win-amd64
