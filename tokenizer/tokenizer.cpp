@@ -6,14 +6,6 @@
 
 namespace miniplc0 {
 
-    auto _reserved = std::unordered_map<std::string, TokenType>({
-        { "begin", TokenType::BEGIN },
-        { "end", TokenType::END },
-        { "const", TokenType::CONST },
-        { "var", TokenType::VAR },
-        { "print", TokenType::PRINT },
-    });
-
 	std::pair<std::optional<Token>, std::optional<CompilationError>> Tokenizer::NextToken() {
 		if (!_initialized)
 			readAll();
@@ -35,9 +27,9 @@ namespace miniplc0 {
 		while (true) {
 			auto p = NextToken();
 			if (p.second.has_value()) {
-				if (p.second.value().GetCode() == ErrorCode::ErrEOF) 
+				if (p.second.value().GetCode() == ErrorCode::ErrEOF)
                     return std::make_pair(result, std::optional<CompilationError>());
-				else 
+				else
                     return std::make_pair(std::vector<Token>(), p.second);
 			}
 			result.emplace_back(p.first.value());
@@ -210,6 +202,13 @@ namespace miniplc0 {
                     auto token_str = ss.str();
                     ss.str("");
                     unreadLast();
+                    auto _reserved = std::unordered_map<std::string, TokenType>({
+                        { "begin", TokenType::BEGIN },
+                        { "end", TokenType::END },
+                        { "const", TokenType::CONST },
+                        { "var", TokenType::VAR },
+                        { "print", TokenType::PRINT },
+                    });
 
                     auto it = _reserved.find(token_str);
                     if (it != _reserved.end()) {
